@@ -19,63 +19,47 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Descarga Gradle directamente — más confiable que setup-gradle
       - name: Download Gradle 8.7
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp/
           echo "/tmp/gradle-8.7/bin" >> $GITHUB_PATH
 
-      # Genera íconos del reloj con Python
-      - name: Generate launcher icons
+      - name: Generate launcher icons with ImageMagick
         run: |
-          pip install Pillow --break-system-packages -q
-          python3 - << 'PYEOF'
-import os
-from PIL import Image, ImageDraw
+          for spec in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
+            DENSITY="${spec%:*}"
+            SIZE="${spec#*:}"
+            DIR="app/src/main/res/mipmap-${DENSITY}"
+            mkdir -p "$DIR"
+            HALF=$((SIZE / 2))
+            R1=$((SIZE / 2 - SIZE / 10))
+            R2=$((SIZE / 4))
+            convert -size "${SIZE}x${SIZE}" xc:"#000010" \
+              -fill "#4da8f8" \
+              -draw "ellipse ${HALF},${HALF} ${R1},${R1} 0,360" \
+              -fill "rgba(255,255,255,0.86)" \
+              -draw "ellipse ${HALF},${HALF} ${R2},${R2} 0,360" \
+              "${DIR}/ic_launcher.png"
+            cp "${DIR}/ic_launcher.png" "${DIR}/ic_launcher_round.png"
+          done
+          echo "Icons OK"
 
-def make_icon(size):
-    img = Image.new('RGBA', (size, size), (0, 0, 16, 255))
-    draw = ImageDraw.Draw(img)
-    m = size // 10
-    draw.ellipse([m, m, size-m, size-m], fill=(77, 168, 248, 255))
-    cx, cy = size//2, size//2
-    r2 = size // 4
-    draw.ellipse([cx-r2, cy-r2, cx+r2, cy+r2], fill=(255, 255, 255, 220))
-    w = max(2, size//20)
-    draw.line([cx, cy, cx, cy-r2+2], fill=(0, 0, 16, 255), width=w)
-    draw.line([cx, cy, cx+r2-4, cy+r2//2], fill=(0, 0, 16, 255), width=max(1, w-1))
-    return img
-
-for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
-    folder = f'app/src/main/res/mipmap-{density}'
-    os.makedirs(folder, exist_ok=True)
-    icon = make_icon(size)
-    icon.save(f'{folder}/ic_launcher.png')
-    icon.save(f'{folder}/ic_launcher_round.png')
-print('Icons generados OK')
-PYEOF
-
-      # Android SDK ya está preinstalado en ubuntu-latest
       - name: Set local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      # Genera el wrapper de Gradle
       - name: Generate Gradle wrapper
         run: |
           gradle wrapper --gradle-version=8.7 --distribution-type=bin
           chmod +x gradlew
 
-      # Compila el APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      # Renombra el APK
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk CircuitoWatch-v1.0.apk
 
-      # Sube el APK como artefacto descargable
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CircuitoWatch-APK
