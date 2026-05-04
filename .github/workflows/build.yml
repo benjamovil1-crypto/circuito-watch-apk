@@ -1,0 +1,75 @@
+name: Build CircuitoWatch APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Generate launcher icons
+        run: |
+          pip install Pillow --quiet --break-system-packages
+          python3 - <<'EOF'
+import os
+from PIL import Image, ImageDraw
+
+def make_icon(size):
+    img = Image.new('RGBA', (size, size), (0, 0, 16, 255))
+    draw = ImageDraw.Draw(img)
+    m = size // 10
+    draw.ellipse([m, m, size-m, size-m], fill=(77, 168, 248, 255))
+    cx, cy = size//2, size//2
+    r2 = size // 4
+    draw.ellipse([cx-r2, cy-r2, cx+r2, cy+r2], fill=(255, 255, 255, 220))
+    w = max(2, size//20)
+    draw.line([cx, cy, cx, cy-r2+2], fill=(0,0,16,255), width=w)
+    draw.line([cx, cy, cx+r2-4, cy+r2//2], fill=(0,0,16,255), width=max(1,w-1))
+    return img
+
+for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
+    folder = f'app/src/main/res/mipmap-{density}'
+    os.makedirs(folder, exist_ok=True)
+    ic = make_icon(size)
+    ic.save(f'{folder}/ic_launcher.png')
+    ic.save(f'{folder}/ic_launcher_round.png')
+
+print('Icons OK')
+EOF
+
+      - name: Set up local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+      - name: Generate Gradle wrapper
+        run: |
+          gradle wrapper --gradle-version=8.7 --distribution-type=bin
+          chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk CircuitoWatch-v1.0.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CircuitoWatch-APK
+          path: CircuitoWatch-v1.0.apk
+          retention-days: 60
