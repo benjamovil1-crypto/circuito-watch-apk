@@ -25,7 +25,10 @@ jobs:
           unzip -q /tmp/gradle.zip -d /tmp/
           echo "/tmp/gradle-8.7/bin" >> $GITHUB_PATH
 
-      - name: Generate launcher icons with ImageMagick
+      - name: Install ImageMagick
+        run: sudo apt-get install -y imagemagick
+
+      - name: Generate launcher icons
         run: |
           for spec in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
             DENSITY="${spec%:*}"
@@ -43,7 +46,7 @@ jobs:
               "${DIR}/ic_launcher.png"
             cp "${DIR}/ic_launcher.png" "${DIR}/ic_launcher_round.png"
           done
-          echo "Icons OK"
+          echo "Icons generados OK"
 
       - name: Set local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
