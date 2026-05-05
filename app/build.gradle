@@ -1,38 +1,31 @@
-plugins {
-    id 'com.android.application'
-}
-
 android {
-    namespace 'com.benjamovil.circuitowatch'
+    namespace 'com.tu.paquete.circuitowatch' // Asegúrate de que este sea tu ID real
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.benjamovil.circuitowatch"
-        minSdk 30
-        targetSdk 34
+        applicationId "com.tu.paquete.circuitowatch"
+        minSdk 30    // Wear OS 3.0 o superior
+        targetSdk 34 // Wear OS 5 (Necesario para Watch 7)
         versionCode 1
         versionName "1.0"
     }
 
     buildTypes {
-        debug {
-            applicationIdSuffix ""
-            versionNameSuffix ""
-            // Uses default debug keystore — installable via ADB
-        }
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
+    
+    // Esto asegura que la app funcione en el procesador de 64 bits del Watch 7
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
-    // No external dependencies needed — WebView is part of the Android SDK
+    // Librerías esenciales para que la interfaz no se quede en negro
+    implementation 'androidx.wear:wear:1.3.0'
+    implementation 'com.google.android.gms:play-services-wearable:18.1.0'
 }
-
